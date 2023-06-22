@@ -571,14 +571,21 @@ float getDepthScale(rs2::device dev) {
     throw std::runtime_error("Device does not have a depth sensor");
 }
 
-tuple<rs2::pipeline, RealSenseProperties> startPipeline(DeviceProperties& devProps) {
+tuple<rs2::pipeline, RealSenseProperties> startPipeline(DeviceProperties& devProps, int deviceNum) {
     rs2::context ctx;
     auto devices = ctx.query_devices();
+    cout << "test8" << endl;
+    cout << "Size: " << devices.size() << endl;
+
     if (devices.size() == 0) {
         throw runtime_error("no device connected; please connect an Intel RealSense device");
     }
-    rs2::device selected_device = devices.front();
 
+    cout << deviceNum << ": " << devices[deviceNum].get_info(RS2_CAMERA_INFO_NAME) << endl;//" - " << devices[d].supports(RS2_CAMERA_INFO_SERIAL_NUMBER) << endl;
+
+    cout << "test9" << endl;
+    rs2::device selected_device = devices.front();
+    cout << "test10" << endl;
     auto serial = selected_device.get_info(RS2_CAMERA_INFO_SERIAL_NUMBER);
     cout << "found device:\n";
     cout << "name:      " << selected_device.get_info(RS2_CAMERA_INFO_NAME) << "\n";
@@ -675,7 +682,7 @@ void on_device_reconnect(rs2::event_information& info, DeviceProperties& context
         // Find and start the first available device
         RealSenseProperties props;
         try {
-            tie(pipeline, props) = startPipeline(context);
+            tie(pipeline, props) = startPipeline(context, 0);
         } catch (const exception& e) {
             cout << "caught exception: \"" << e.what() << "\"" << endl;
             return;
@@ -709,12 +716,13 @@ int main(const int argc, const char* argv[]) {
         return 0;
     }
     string port = "8085";
+    int deviceNum = 0;
     int colorWidth = 0;
     int colorHeight = 0;
     int depthWidth = 0;
     int depthHeight = 0;
     if (argc > 1) {
-        port = argv[1];
+        deviceNum = stoi(argv[1]);
     }
 
     auto parseIntArg = [argc, argv](const int pos, const string& name) -> tuple<int, bool> {
@@ -748,6 +756,8 @@ int main(const int argc, const char* argv[]) {
         return 1;
     }
 
+    cout << "test" << endl;
+
     if (colorWidth == 0 || colorHeight == 0) {
         cout << "note: will pick any suitable color_width and color_height" << endl;
     }
@@ -768,25 +778,31 @@ int main(const int argc, const char* argv[]) {
         }
     }
 
+    cout << "test2" << endl;
+
     if (disableColor && disableDepth) {
         cerr << "cannot disable both color and depth" << endl;
         return 1;
     }
+    
+    cout << "test4" << endl;
 
     // DeviceProperties context also holds a bool that can stop the thread if device gets
     // disconnected
     DeviceProperties deviceProps(colorWidth, colorHeight, disableColor, depthWidth, depthHeight,
                                  disableDepth);
 
+    cout << "test5" << endl;
     // First start of Pipeline
     rs2::pipeline pipe;
     RealSenseProperties props;
     try {
-        tie(pipe, props) = startPipeline(ref(deviceProps));
+        tie(pipe, props) = startPipeline(ref(deviceProps), deviceNum);
     } catch (const exception& e) {
         cout << "caught exception: \"" << e.what() << "\"" << endl;
         return 1;
     }
+    cout << "test6" << endl;
     // First start of camera thread
     promise<void> ready;
     thread cameraThread(frameLoop, pipe, ref(latestFrames), ref(ready), ref(deviceProps),
